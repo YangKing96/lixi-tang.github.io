@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lixi‑Tang</title>
+    <!-- Gorgeous but legible display fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Cinzel:wght@500;700&display=swap"
+        rel="stylesheet">
+
+    <link href="https://fonts.googleapis.com/css2?family=Hiragino+Sans+GB:wght@400;500;600&display=swap"
+        rel="stylesheet">
+
+    <style>
+        /* --- Reset & base --- */
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: radial-gradient(1200px 800px at 50% 10%, #fafafa, #f0f3f8);
+            color: #0b0b0b;
+        }
+
+        /* --- Title --- */
+        header {
+            position: fixed;
+            inset: 0 0 auto 0;
+            height: 112px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            /* keep interactions for the bubbles only */
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0));
+            z-index: 10;
+        }
+
+        h1#siteTitle {
+            margin: 0;
+            letter-spacing: 0.06em;
+            font-family: 'Cinzel', 'Playfair Display', serif;
+            font-weight: 700;
+            font-size: clamp(28px, 4vw, 46px);
+            text-transform: none;
+            line-height: 1;
+            filter: drop-shadow(0 2px 12px rgba(0, 0, 0, .08));
+        }
+
+        /* --- Stage --- */
+        .stage {
+            position: absolute;
+            inset: 92px 0 0 0;
+            /* below header */
+            overflow: hidden;
+        }
+
+        /* Each circle image (bubble) */
+        .bubble {
+            position: absolute;
+            top: 0;
+            left: 0;
+            will-change: transform;
+            border-radius: 50%;
+            overflow: hidden;
+            cursor: pointer;
+            user-select: none;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, .08), 0 2px 6px rgba(0, 0, 0, .06);
+            transition: box-shadow .25s ease;
+        }
+
+        .bubble:hover {
+            box-shadow: 0 10px 36px rgba(0, 0, 0, .12), 0 4px 14px rgba(0, 0, 0, .08);
+        }
+
+        /* ensure circular cropping */
+        .bubble img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        /* Clickable badge stars */
+        .bubble.clickable .fireworks {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            display: none;
+        }
+
+        .bubble.clickable:hover .fireworks {
+            display: block;
+        }
+
+        .spark {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 2px;
+            height: 2px;
+            border-radius: 50%;
+            background: #fff9bf;
+            filter: drop-shadow(0 0 10px rgb(255, 241, 118));
+            transform: translate(-50%, -50%) rotate(var(--angle, 0deg)) translateY(0);
+            animation: fire 2s ease-out infinite;
+            animation-delay: var(--delay, 0s);
+        }
+
+        .ring {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            box-shadow: 0 0 18px rgba(255, 243, 130, 0.95), 0 0 6px rgba(255, 246, 166, 0.9) inset;
+            transform: translate(-50%, -50%) scale(.4);
+            opacity: .8;
+            animation: ring 2s ease-out infinite;
+        }
+
+        @keyframes fire {
+            0% {
+                transform: translate(-50%, -50%) rotate(var(--angle, 0deg)) translateY(0);
+                opacity: .95;
+            }
+
+            70% {
+                transform: translate(-50%, -50%) rotate(var(--angle, 0deg)) translateY(var(--dist, 56px));
+                opacity: 1;
+            }
+
+            100% {
+                transform: translate(-50%, -50%) rotate(var(--angle, 0deg)) translateY(calc(var(--dist, 56px) + 10px));
+                opacity: 0;
+            }
+        }
+
+        @keyframes ring {
+            0% {
+                transform: translate(-50%, -50%) scale(.4);
+                opacity: .9;
+            }
+
+            70% {
+                transform: translate(-50%, -50%) scale(1.2);
+                opacity: .8;
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(1.35);
+                opacity: 0;
+            }
+        }
+
+        /* tiny helper for accessibility */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
+
+        /* Responsive hint footer (optional, not a border) */
+        footer.hint {
+            position: fixed;
+            right: 12px;
+            bottom: 10px;
+            font: 12px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+            color: #667085;
+            opacity: .7;
+        }
+
+        footer.hint a {
+            color: #3843ff;
+            text-decoration: none;
+        }
+
+        /* Put these near the top of your <style> */
+        :root {
+            --headerH: 92px;
+            /* keep your header height in one place */
+            --dockH: 140px;
+            /* height reserved at the bottom for the bubble row */
+        }
+
+        /* keep */
+        header {
+            height: var(--headerH);
+        }
+
+        /* stage starts below the header */
+        .stage {
+            position: absolute;
+            inset: var(--headerH) 0 0 0;
+            overflow: hidden;
+        }
+
+        /* detail panel now spans full width at the top, leaving space for the bottom dock */
+        .detail-pane {
+            position: absolute;
+            top: var(--headerH);
+            bottom: var(--dockH);
+            left: 0;
+            right: 0;
+            display: none;
+            overflow: auto;
+            padding: 28px 36px;
+        }
+
+        body.detail-mode .detail-pane {
+            display: grid;
+            grid-template-columns: 0.8fr 1fr;
+            gap: 56px;
+        }
+
+        .detail-pane .hero {
+            width: 100%;
+            aspect-ratio: 4/3;
+            border-radius: 18px;
+            overflow: hidden;
+            box-shadow: 0 16px 32px rgba(0, 0, 0, .14);
+        }
+
+        .detail-pane .hero img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .detail-pane .meta h2 {
+            margin: 0 0 10px;
+            font-family: 'Playfair Display', serif;
+            font-weight: 700;
+            font-size: clamp(22px, 3vw, 28px);
+        }
+
+        /* Controls for description text only */
+        .detail-pane .meta {
+            font-size: clamp(15px, 1.6vw, 18px);
+            line-height: 1.8;
+            text-align: justify;
+            text-justify: inter-ideograph;
+            word-break: keep-all;
+            /* Prevent punctuation at line start */
+            hanging-punctuation: first last;
+            hyphens: none;
+        }
+
+        @media (max-width: 800px) {
+            .detail-pane .meta {
+                font-size: 16px;
+                line-height: 1.7;
+            }
+        }
+
+        .detail-pane .meta p {
+            /* paragraph spacing */
+            margin: 16px 0 0;
+            text-indent: 0;
+        }
+
+        .detail-pane .meta p:first-of-type {
+            margin-top: 0;
+        }
+
+        .detail-pane .meta ul {
+            /* list spacing */
+            margin: 16px 0 0;
+            padding-left: 1.5em;
+            text-align: left;
+        }
+
+        .detail-pane .meta li {
+            margin: 8px 0;
+            text-align: justify;
+            text-justify: inter-ideograph;
+        }
+
+        .detail-pane .meta,
+        .detail-pane .meta p,
+        .detail-pane .meta ul,
+        .detail-pane .meta li {
+            font-family: "Inter", "Noto Sans SC", "PingFang SC", "Microsoft YaHei",
+                "Hiragino Sans GB", "Source Han Sans SC", system-ui, sans-serif;
+        }
+
+        .detail-pane .actions {
+            margin-top: 22px;
+        }
+
+        .detail-pane .btn {
+            display: inline-block;
+            padding: 0px 0px;
+            border-radius: 0px;
+            background: #00000000;
+            color: #111;
+            text-decoration: none;
+            box-shadow: 0 0px 0px rgba(0, 0, 0, .18);
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1 id="siteTitle">Lixi‑Tang</h1>
+    </header>
+    <main class="stage" id="stage" aria-label="Floating circle gallery"></main>
+    <section id="detail" class="detail-pane" aria-hidden="true"></section>
+    <footer class="hint">Hover to explore • Click ✨ items to open details
+    </footer>
+
+    <script>
+        /* =============================================================
+           Lixi‑Tang floating circle gallery — single-file implementation
+           -------------------------------------------------------------
+           How to customize:
+           1) Replace the items in IMAGES below (src can be local or remote).
+           2) Set clickable: true and link: 'https://...' for bubbles that should open a page.
+           3) Sizes are base diameters in pixels; the system keeps everything circular.
+           ============================================================= */
+
+        const IMAGES = [
+            // A few example portraits/art/textures — replace freely
+            {
+                src: 'pic/Layer 1.png', size: 140, clickable: true, title: 'A Case Study of a Wedding Photograph', year: 2024, description: [
+                    "This project explores how family photographs function as cultural memory through the study of a wedding photograph. Using an interpretive approach and photo elicitation, I revisited a wedding photo taken by my parents in 1995. They re-enacted their original pose, and I recorded their interview and produced a short film.",
+                    "For the couple, the wedding photograph represents a sweet memory of newly married life, while for the next generation who never experienced that era, it serves as a direct form of cultural memory. In today’s wedding ceremonies, brides no longer wear the red coat seen in the photograph.",
+                    "By transforming this static image into an active site of memory transmission, I discussed how private images can be connected with social memory and how personal memories can be transformed into public understanding."
+                ], link: '<!DOCTYPE html 8>.html'
+            },
+            { src: 'pic/Layer 2.png', size: 110 },
+            {
+                src: 'pic/Layer 3.png', size: 120, clickable: true, title: 'Elder Care in Miao Village, Southwest China', year: 2025, description: [
+                    "In the summer and autumn of 2025, I conducted four months of fieldwork in a Miao village located in the Guangxi Zhuang Autonomous Region in southwest China. Through participant observation, go-along with the camera, and semi-structured interviews, I tried to analyze local elderly people’s concepts of health and their everyday caregiving practices.",
+                    "In this project, I was both a visual anthropology researcher and a short film creator. I accompanied several rural doctors on home visits, took part in the daily lives of elderly villagers, and conducted interviews with local residents. I was responsible for video shooting, sound recording, and data organization. During the fieldwork, I constantly reflected on moral and ethical issues, such as how to offer appropriate help and where to draw the boundaries of filming.",
+                    "I am now analyzing the collected data and planning to edit a 20-minute short film. In addition, I will write a paper on the theme of elderly care. I hope that my work can offer insights into the lives of the elderly in the Miao villages of southwest China and transform anthropological knowledge into visual form, enhancing public understanding and awareness of local elder care practices."
+                ], link: '<!DOCTYPE html 8>.html'
+            },
+            { src: 'pic/Layer 4.png', size: 90 },
+            { src: 'pic/Layer 5.png', size: 130 },
+            {
+                src: 'pic/Layer 6.png', size: 150, clickable: true, title: 'Chinese Migrants in Aarhus, Denmark', year: 2024, description: [
+                    "I conducted research on the Chinese migrant community in Aarhus, Denmark. As a Chinese who living in Denmark , I was both an insider and an outsider in this project. Sharing a similar cultural background while maintaining a new analytical perspective allowed me to understand and engage with their everyday lives better. My aim was to explore how overseas Chinese construct identity and community in transnational contexts.",
+                    "I carried out two research themes, each resulting in a short film, and later invited participants to watch the films and share feedback.",
+                    "Project 1 explores issues of identity construction within the Aarhus Chinese community. It investigates how film can serve as a tool to capture the fluidity of cultural identity and the dynamics of cultural transmission. The short film presents subtle details related to identity that can be intuitively felt by viewers. For example, while the first-generation migrants are eating hotpot and chatting in Chinese, their second-generation children who playing games off-camera speaking in Danish.",
+                    "Project 2 explores the function and limitation of WeChat groups in Aarhus. These groups act as virtual “Chinatowns,” providing support that helps overseas Chinese adapt to local life and build a sense of community. However, their semi-open structure and reliance on shared cultural practices also create social boundaries, limiting interaction with mainstream Danish society."
+                ], link: '<!DOCTYPE html 8>.html'
+            },
+            { src: 'pic/Layer 14.jpg', size: 85 },
+            { src: 'pic/Layer 8.jpg', size: 95 },
+            { src: 'pic/Layer 9.jpg', size: 100 },
+            { src: 'pic/Layer 10.jpg', size: 115, clickable: true, title: 'Film Restoration and Public Screening', year: 2023, description: 'From 2020 to 2023, I worked at Xiamen University\'s Flim Archive Studies Center as research assistent, where I successfully completed the restoration of 6 celluloid films, amounting to a total of 70 film reels with my colledges.Upon completion, the restored films were showcased in various cities across China.Engaging directly with the audience, we sought their feedback and communicated face- to - face during the screenings.I realized that the restoration of old film reels not only revitalized the memories encapsulated in these films for a generation but also forged new memories for a contemporary audience.', link: '<!DOCTYPE html 8>.html' },
+            { src: 'pic/Layer 11.jpg', size: 75 },
+            { src: 'pic/Layer 12.png', size: 105 },
+            { src: 'pic/Layer 13.png', size: 90 },
+            { src: 'pic/Layer 7.jpg', size: 195, clickable: true, title: 'About', description: 'I am a visual anthropology researcher, and I am curious about concepts such as social structure, culture, community, and identity. I am skilled in video shooting and editing, and I have curatorial experience. My career goal is to become a curator or archivist. I look forward to combining anthropology with visual art to create cultural projects that connect with the public.', link: '<!DOCTYPE html 8>.html' },
+            { src: 'pic/Layer 15.jpg', size: 80, },
+        ];
+
+        const stage = document.getElementById('stage');
+        const W = () => stage.clientWidth; const H = () => stage.clientHeight;
+
+        // Physics parameters
+        const minSpeed = 0.000055;      // baseline speed so bubbles never stall (px/ms)
+        const orbitOmega = 0.000042;  // gentle angular drift around the center (rad/ms)
+        const padding = 20;                 // minimum spacing between circles
+        const centerPull = 0.00035;         // weak pull to keep a loose sphere
+        const driftJitter = 0.0002;        // tiny random walk
+        const wallBounce = 0.02;          // bounce factor at edges
+        const maxSpeed = 0.3;             // cap drifting speed (px / ms)
+        const enlargeScale = 1.8;          // hover scale
+        const shrinkScale = 0.82;          // neighbors scale
+        const neighborRadius = 220;        // area of effect for hover push
+
+        const nodes = [];
+
+        // Detail mode state
+        let detailMode = false;
+        let selectedNode = null;
+        const detailEl = document.getElementById('detail');
+        const leftColumn = 116; // bubble column on the left
+
+        // Create DOM bubbles and initial positions roughly inside a circular cluster
+        function init() {
+            const cx = W() * 0.5, cy = H() * 0.9; // center of cluster
+            const R = Math.min(W(), H()) * 0.45 + 100; // radius of loose sphere
+
+            IMAGES.forEach((item, i) => {
+                const d = item.size; const r = d / 2;
+                const angle = (i / IMAGES.length) * Math.PI * 2 + Math.random() * 0.6;
+                const rad = R * (0.4 + Math.random() * 0.6);
+                const x = cx + Math.cos(angle) * rad;
+                const y = cy + Math.sin(angle) * rad;
+                const el = document.createElement('div');
+                el.className = 'bubble' + (item.clickable ? ' clickable' : '');
+                el.style.width = d + 'px'; el.style.height = d + 'px';
+
+                const img = document.createElement('img');
+                img.src = item.src; img.alt = '';
+                el.appendChild(img);
+
+                if (item.clickable) {
+                    const fw = document.createElement('div');
+                    fw.className = 'fireworks';
+                    // 12 bright yellow sparks + an expanding ring
+                    for (let k = 0; k < 12; k++) {
+                        const s = document.createElement('span');
+                        s.className = 'spark';
+                        s.style.setProperty('--angle', (k * 30) + 'deg');
+                        s.style.setProperty('--dist', '64px');
+                        s.style.setProperty('--delay', (k % 6) * 0.07 + 's');
+                        fw.appendChild(s);
+                    }
+                    const ring = document.createElement('span');
+                    ring.className = 'ring';
+                    fw.appendChild(ring);
+                    el.appendChild(fw);
+                }
+
+                stage.appendChild(el);
+
+                const n = {
+                    i, el, img,
+                    x, y, r,
+                    vx: (Math.random() * 0.2 - 0.1), // initial vel in px per frame (we'll scale by dt)
+                    vy: (Math.random() * 0.2 - 0.1),
+                    scale: 1,
+                    targetScale: 1,
+                    pinned: false,
+                    clickable: !!item.clickable,
+                    link: item.link || null,
+                };
+
+                nodes.push(n);
+
+                // Interactions
+                el.addEventListener('mouseenter', () => onHover(n));
+                el.addEventListener('mouseleave', () => onLeave(n));
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (n.clickable) enterDetail(n);
+                });
+            });
+        }
+
+        function onHover(target) {
+            if (detailMode) return;
+            target.pinned = true; // enlarged image no longer moves
+            target.targetScale = enlargeScale;
+            target.vx = 0; target.vy = 0;
+
+            // Affect neighbors
+            nodes.forEach(n => {
+                if (n === target) return;
+                const dx = n.x - target.x; const dy = n.y - target.y; const dist = Math.hypot(dx, dy);
+                if (dist < neighborRadius) {
+                    n.targetScale = shrinkScale;
+                    // push away from the target
+                    const m = (neighborRadius - dist) / neighborRadius; // 0..1
+                    const ux = dx / (dist || 1), uy = dy / (dist || 1);
+                    const push = 0.6 * m; // impulse
+                    n.vx += ux * push; n.vy += uy * push;
+                }
+            });
+        }
+
+        function onLeave(target) {
+            if (detailMode) return;
+            target.pinned = false;
+            target.targetScale = 1;
+            nodes.forEach(n => { if (n !== target) n.targetScale = 1; });
+            const ang = Math.random() * Math.PI * 0.001;
+            target.vx = Math.cos(ang) * (minSpeed * 0.0012);
+            target.vy = Math.sin(ang) * (minSpeed * 0.0012);
+        }
+
+        function escapeHTML(s) {
+            return String(s).replace(/[&<>"']/g, ch =>
+                ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+        }
+
+        // Accepts a string (use blank lines) or an array of blocks.
+        // A block that contains lines starting with "- " becomes a <ul>.
+        function renderBlocks(desc) {
+            const blocks = Array.isArray(desc) ? desc : String(desc).split(/\n\s*\n/);
+            return blocks.map(b => {
+                const lines = String(b).split(/\n/);
+                if (lines.every(l => l.trim().startsWith('- '))) {
+                    const lis = lines.map(l => `<li>${escapeHTML(l.replace(/^-+\s*/, ''))}</li>`).join('');
+                    return `<ul>${lis}</ul>`;
+                }
+                return `<p>${escapeHTML(b.trim())}</p>`;
+            }).join('');
+        }
+
+        function renderDetail(n) {
+            const item = IMAGES[n.i];
+            const title = item.title || 'Untitled Work';
+            const year = item.year ? ` (${item.year})` : '';
+            const desc = item.description || '';
+            const descHTML = renderBlocks(desc);
+            const link = item.link || null;
+
+            detailEl.innerHTML = `
+  <div class="hero"><img src="${item.src}" alt=""></div>
+  <div class="meta">
+    <h2>${title}${year}</h2>
+    ${descHTML}
+    ${link ? `<div class="actions"><a class="btn" href="${link}" target="_blank" rel="noopener">※</a></div>` : ''}
+  </div>`;
+            detailEl.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('detail-mode');
+        }
+
+        function enterDetail(n) {
+            detailMode = true; selectedNode = n;
+            nodes.forEach(m => { m.pinned = true; m.vx = 0; m.vy = 0; m.targetScale = 0.6; });
+            renderDetail(n);
+        }
+
+        function exitDetail() {
+            detailMode = false; selectedNode = null;
+            detailEl.setAttribute('aria-hidden', 'true');
+            document.body.classList.remove('detail-mode');
+            nodes.forEach(m => {
+                m.pinned = false; m.targetScale = 1;
+                const ang = Math.random() * Math.PI * 2; // gentle nudge back into motion
+                m.vx = Math.cos(ang) * 0.05; m.vy = Math.sin(ang) * 0.05;
+            });
+        }
+        // Keep circles from overlapping — pairwise resolution
+        function resolveCollisions() {
+            for (let i = 0; i < nodes.length; i++) {
+                for (let j = i + 1; j < nodes.length; j++) {
+                    const a = nodes[i], b = nodes[j];
+                    const dx = b.x - a.x, dy = b.y - a.y; let dist = Math.hypot(dx, dy);
+                    const min = (a.r * a.scale) + (b.r * b.scale) + padding;
+                    if (dist < min) {
+                        const overlap = (min - dist) || 0.0001;
+                        const ux = (dx / (dist || 1)); const uy = (dy / (dist || 1));
+                        // Move free nodes away; pinned nodes stay put
+                        const aMov = a.pinned ? 0 : (b.pinned ? 1 : 0.5);
+                        const bMov = b.pinned ? 0 : (a.pinned ? 1 : 0.5);
+                        a.x -= ux * overlap * aMov; a.y -= uy * overlap * aMov;
+                        b.x += ux * overlap * bMov; b.y += uy * overlap * bMov;
+                    }
+                }
+            }
+        }
+
+        // Keep them inside the stage, bouncing softly at the edges
+        function contain(n) {
+            const w = W(), h = H();
+            const rr = n.r * n.scale + 2; // small gap to the walls
+            if (!n.pinned) {
+                if (n.x - rr < 0) { n.x = rr; n.vx = Math.abs(n.vx) * wallBounce; }
+                if (n.x + rr > w) { n.x = w - rr; n.vx = -Math.abs(n.vx) * wallBounce; }
+                if (n.y - rr < 0) { n.y = rr; n.vy = Math.abs(n.vy) * wallBounce; }
+                if (n.y + rr > h) { n.y = h - rr; n.vy = -Math.abs(n.vy) * wallBounce; }
+            } else {
+                // pinned still cannot cross walls when enlarged
+                if (n.x - rr < 0) n.x = rr;
+                if (n.x + rr > w) n.x = w - rr;
+                if (n.y - rr < 0) n.y = rr;
+                if (n.y + rr > h) n.y = h - rr;
+            }
+        }
+
+        // Smoothly move toward targetScale
+        function approach(current, target, rate) { return current + (target - current) * rate; }
+
+        let last = performance.now();
+        function frame(now) {
+            const dt = Math.min(5, now - last);  // use a realistic cap
+            last = now;
+
+            const cx = W() * 0.5, cy = H() * 0.50;
+
+            if (detailMode) {
+                const scl = 0.1;                 // uniform shrink in detail
+                const leftPad = 734, rightPad = 16, bottomPad = 16;
+                const DOCK_H = 140;              // must match --dockH
+                const baseline = H() - bottomPad; // bottom edge inside the stage
+
+                // compute horizontal spacing to avoid overlap
+                const totalWidth = nodes.reduce((s, n) => s + (n.r * 2 * scl), 0);
+                const avail = Math.max(180, W() - leftPad - rightPad);
+                const gaps = Math.max(10, Math.min(28, (avail - totalWidth) / Math.max(1, nodes.length - 1)));
+
+                let xCursor = leftPad;
+                nodes.forEach(n => {
+                    n.targetScale = scl;
+                    const rr = n.r * scl;
+
+                    // target center positions
+                    const tx = xCursor + rr;
+                    const ty = baseline - rr;   // centers a hair above the bottom
+
+                    // ease into place
+                    n.x = approach(n.x, tx, 0.20);
+                    n.y = approach(n.y, ty, 0.20);
+                    n.scale = approach(n.scale, n.targetScale, 0.12);
+
+                    contain(n);                 // keep within viewport
+                    xCursor += rr * 2 + gaps;   // next slot; guarantees no overlap
+                });
+            } else {
+                // ... your existing drifting physics branch unchanged ...
+                nodes.forEach(n => {
+                    if (!n.pinned) {
+                        // orbital + jitter + centering
+                        const rx = n.x - cx, ry = n.y - cy;
+                        n.vx += (-ry) * orbitOmega * dt;
+                        n.vy += (rx) * orbitOmega * dt;
+
+                        n.vx += (Math.random() - 0.5) * driftJitter * dt;   // FIX: -0.5, not -1
+                        n.vy += (Math.random() - 0.5) * driftJitter * dt;
+
+                        const dx = cx - n.x, dy = cy - n.y;
+                        n.vx += dx * centerPull * dt;
+                        n.vy += dy * centerPull * dt;
+
+                        const sp = Math.hypot(n.vx, n.vy);
+                        if (sp > maxSpeed) { const k = maxSpeed / (sp || 1); n.vx *= k; n.vy *= k; }
+
+                        // ensure non-zero motion
+                        const sp2 = Math.hypot(n.vx, n.vy);
+                        if (sp2 < minSpeed) {
+                            const ang = Math.atan2(n.vy, n.vx) || (Math.random() * Math.PI * 2);
+                            n.vx = Math.cos(ang) * minSpeed;
+                            n.vy = Math.sin(ang) * minSpeed;
+                        }
+
+                        n.x += n.vx * dt; n.y += n.vy * dt;
+                    }
+                    n.scale = approach(n.scale, n.targetScale, n.pinned ? 0.18 : 0.12);
+                    contain(n);
+                });
+                resolveCollisions();
+            }
+
+            // Render for both modes
+            nodes.forEach(n => {
+                n.el.style.transform = `translate(${n.x - n.r}px, ${n.y - n.r}px) scale(${n.scale})`;
+            });
+
+            requestAnimationFrame(frame);
+        }
+
+        // Handle resize
+        window.addEventListener('resize', () => { /* layout stays fluid; physics adapts automatically */ });
+
+        // Kick things off
+        init();
+        requestAnimationFrame(frame);
+        document.addEventListener('click', (e) => {
+            if (!detailMode) return;
+            const inPanel = e.target.closest('#detail');
+            const inBubble = e.target.closest('.bubble');
+            if (!inPanel && !inBubble) exitDetail();
+        });
+    </script>
+</body>
+
+</html>
